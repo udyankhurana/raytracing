@@ -42,12 +42,18 @@ struct tri
 	int color;	//value 0-255
 };
 
+struct sphere
+{	vector centre;
+	float radius;
+	int color;
+};
+
 class ray
 {	public: 
 	vector rayorig,raydir;	//origin and direction of ray
 	float t;	// as ray R = origin + t * direction
 	ray(vector x,vector y): rayorig(x), raydir(y), t(0.0) {}
-	float intersect(tri t)	//Moller-Trumbore algorithm
+	float triangle_intersect(tri t)	//Moller-Trumbore algorithm
 	{	vector v1,v2;	//calculate vectors for side edges
 		v1 = t.b - t.a;
 		v2 = t.c - t.a;
@@ -69,16 +75,38 @@ class ray
 			return param;	//the 't' value returned if intersection found
 		return 0;
 	}
+	float sphere_intersect(sphere s)
+	{	float a,b,c;
+		vector diff = rayorig - s.centre;
+		a=raydir.dot(raydir);
+		b=2*(raydir.dot(diff));
+		c=diff.dot(diff) - s.radius*s.radius;
+		float disc = b*b - 4*a*c;
+		if (disc == 0)
+			return (-(b/(2*a)));
+		else if(disc < 0)
+			return 0;
+		else
+		{	float r1,r2;
+			r1 = (-b + sqrt(disc))/(2*a);
+			r2 = (-b - sqrt(disc))/(2*a);
+			if(r1 < r2)
+				return r1;
+			else
+				return r2;
+		}
+	}
 };
 
 int main() 
 {	
 	int width, height;
-	int numtris,i,j,k,color;
+	int numtris,numspheres,i,j,k,color;
 	int bgcolor=10;
 	// Allocate storage for output image and triangle array
-	unsigned int pixelgrid[250][250]={0};	//so width,height limit = 250
+	unsigned int pixelgrid[500][500]={0};	//so width,height limit = 250
 	tri triarray[50];
+	sphere spherearray[50];
 
 	struct timespec t1, t2;
 	clock_gettime(CLOCK_MONOTONIC, &t1);
@@ -96,17 +124,34 @@ int main()
 		scanf("%f %f %f",&xx,&yy,&zz); //pt 3
 		triarray[i].c = vector(xx,yy,zz);
 	}
-	vector orig = vector(height/2,width/2,10);	//Fixed Origin: Simulating a Pin-hole camera
+	scanf("%d",&numspheres);
+	for(i=0;i<numspheres;i++)
+	{	scanf("%d",&spherearray[i].color);
+		scanf("%f %f %f",&xx,&yy,&zz);	//centre
+		spherearray[i].centre = vector(xx,yy,zz);
+		scanf("%f",&spherearray[i].radius); //radius
+	}
+	vector orig = vector(height/2,width/2,25);	//Fixed Origin: Simulating a Pin-hole camera
 	for(i=0;i<height;i++)
 	{	for(j=0;j<width;j++)
 		{	vector dir = vector(float(i),float(j),float(0));
 			dir = dir - orig; //direction vector
+			dir = dir.normalize();
 			ray r = ray(orig,dir);
 			for(k=0;k<numtris;k++)
-			{	float x = r.intersect(triarray[k]);	//this is the 't' parameter
+			{	float x = r.triangle_intersect(triarray[k]);	//this is the 't' parameter
 				if(x!=0)
 				{	if(r.t!=0.0 && x < r.t || r.t==0.0) //either no pvs. intersection or closer intersection found 
 					{	pixelgrid[i][j] = triarray[k].color;
+						r.t = x;
+					}
+				}
+			}
+			for(k=0;k<numspheres;k++)
+			{	float x = r.sphere_intersect(spherearray[k]);	//this is the 't' parameter
+				if(x!=0)
+				{	if(r.t!=0.0 && x < r.t || r.t==0.0) //either no pvs. intersection or closer intersection found 
+					{	pixelgrid[i][j] = spherearray[k].color;
 						r.t = x;
 					}
 				}
