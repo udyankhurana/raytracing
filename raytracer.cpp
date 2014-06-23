@@ -121,13 +121,9 @@ int main()
 {	
 	int width, height;
 	int numshapes,i=0,j=0,k=0,color,bgcolor=10;
-	// Allocate storage for output image and triangle array
-	unsigned int pixelgrid[500][500]={0};	//width,height limit = 500
+	unsigned int pixelgrid[500][500]={0};	//output pixel grid: width,height limit = 500
 	char type[25];
 	shape *shapes[50];
-	vector a = vector(0,0,0);
-	triangle t[10] = triangle(a,a,a,0,0);
-	sphere s[10] = sphere(a,0,0,0);
 
 	struct timespec t1, t2;
 	clock_gettime(CLOCK_MONOTONIC, &t1);
@@ -148,12 +144,7 @@ int main()
 			y = vector(xx,yy,zz);
 			scanf("%f %f %f",&xx,&yy,&zz); //pt 3
 			z = vector(xx,yy,zz);
-			t[j] = triangle(x,y,z,col,i);
-			shapes[i] = &t[j++]; 
-			/* What we did earlier: 
-			tiangle t = triangle(x,y,z,col,i);
-			shapes[i] = &t; 
-			*/   
+			shapes[i] = new triangle(x,y,z,col,i);
 		}
 		else if(!strcmp(type,"Sphere"))
 		{	int col; vector c; float r;
@@ -161,12 +152,10 @@ int main()
 			scanf("%f %f %f",&xx,&yy,&zz);	//centre
 			c = vector(xx,yy,zz);
 			scanf("%f",&r); //radius
-			s[k] = sphere(c,r,col,i);
-			shapes[i] = &s[k++]; 
+			shapes[i] = new sphere(c,r,col,i);
 		}
 	}
-	for(k=0;k<numshapes;k++)
-		printf("id of shape %d is %d\n",k,shapes[k]->shapeid);
+
 	vector orig = vector(height/2,width/2,25);	//Fixed Origin: Simulating a Pin-hole camera
 	for(i=0;i<height;i++)
 	{	for(j=0;j<width;j++)
@@ -178,7 +167,7 @@ int main()
 			for(k=0;k<numshapes;k++)
 				shapes[k]->intersect(r);
 			if(r.id != -1)
-				col=shapes[r.id]->color;	//should this be '->' or '.' ??
+				col=shapes[r.id]->color;
 			pixelgrid[i][j] = col;
 		}
 	}
