@@ -1,0 +1,33 @@
+INPUT FILE: 'bunny.txt'
+
+1. "origin.z=1000"
+udyan@udyan-K55VM:~/Desktop/CVIT/Ray Tracing/raytracer-code/new$ ./a.out < bunny.txt bunny1.pgm
+No. of Shapes: 69451
+Time For Reading Input: 147.261096 ms
+Time For Intersection Tests: 954987.289420 ms
+Time For Writing To Output: 54.427697 ms
+
+2. "origin.z=2000"
+udyan@udyan-K55VM:~/Desktop/CVIT/Ray Tracing/raytracer-code/new$ ./a.out < bunny.txt bunny2.pgm
+No. of Shapes: 69451
+Time For Reading Input: 174.533661 ms
+Time For Intersection Tests: 947362.830194 ms
+Time For Writing To Output: 55.565484 ms
+udyan@udyan-K55VM:~/Desktop/CVIT/Ray Tracing/raytracer-code/new$ nautilus .
+
+3. "origin.z=10000"
+udyan@udyan-K55VM:~/Desktop/CVIT/Ray Tracing/raytracer-code/new$ ./a.out < bunny.txt bunny3.pgm
+No. of Shapes: 69451
+Time For Reading Input: 148.325580 ms
+Time For Intersection Tests: 975414.236803 ms
+Time For Writing To Output: 53.975653 ms
+udyan@udyan-K55VM:~/Desktop/CVIT/Ray Tracing/raytracer-code/new$ 
+
+4. "origin.z=5000" AND used reader2.py instead of reader.py
+udyan@udyan-K55VM:~/Desktop/CVIT/Ray Tracing/raytracer-code/new$ ./a.out < bunny.txt bunny4.pgm
+No. of Shapes: 69451
+Time For Reading Input: 145.208842 ms
+Time For Intersection Tests: 961526.622389 ms
+Time For Writing To Output: 54.215976 ms
+
+

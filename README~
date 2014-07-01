@@ -1,9 +1,0 @@
-This is a basic code for Raytracing. 
-The first version of the code "naivetracer.cpp" is a very basic implementation of a raytracer taking in traingles, their depths and colors and window size and it outputs the resulting image.
-The second version "raytracer.cpp" is a modular OOP code for raytracer with 3-d vector,ray and triangle classes with all standard operations and intersection tests. It also takes window size and traingle information and outputs an image based on ray-triangle intersections simulating pin-hole camera model (rays have fixed origin) . 
-EDIT: Extended the code to sphere intersection tests. Further extended to abstract classes and inheritance.
-To compile the code: g++ raytracer.cpp -lrt
-To run the code: ./a.out < <inputfilename>
-Each of the output files output0 to output5 corresponds to input files input0 to input5.
-
-EDIT: New input files corresponding to changes made in the code after adding classes are named 'ip1' to 'ip5'.

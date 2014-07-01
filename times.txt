@@ -1,0 +1,23 @@
+INPUT FILE: 'ip1'
+No. of Shapes: 4
+Time For Reading Input: 0.231251 ms
+Time For Intersection Tests: 7.937771 ms
+Time For Writing To Output: 10.334733 ms
+
+INPUT FILE: 'ip2'
+No. of Shapes: 5
+Time For Reading Input: 0.226521 ms
+Time For Intersection Tests: 4.862494 ms
+Time For Writing To Output: 3.738237 ms
+
+INPUT FILE: 'ip3'
+No. of Shapes: 2
+Time For Reading Input: 0.195650 ms
+Time For Intersection Tests: 2.361931 ms
+Time For Writing To Output: 7.659380 ms
+
+INPUT FILE: 'ip4'
+No. of Shapes: 3
+Time For Reading Input: 0.221345 ms
+Time For Intersection Tests: 4.290123 ms
+Time For Writing To Output: 5.381634 ms
