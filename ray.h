@@ -6,27 +6,28 @@
 #include<math.h>
 
 class vec
-{	protected:
-	float x,y,z;
-	
-	public:
+{	public:
+	float x,y,z;	
 	vec(): x(0.0),y(0.0),z(0.0) {}
 	vec(float a,float  b,float c): x(a),y(b),z(c) {}	//constructor
-	vec operator * (const float &a) { return vec(x*a,y*a,z*a) ; }	//scalar multiplication
-	vec operator * (const vec &a) { return vec(x*a.x,y*a.y,z*a.z) ; }	//vec multiplication
-	vec operator + (const vec &a) { return vec(x+a.x,y+a.y,z+a.z) ; }	// vec addition
-	vec operator - (const vec &a) { return vec(x-a.x,y-a.y,z-a.z) ; }	//vec subtraction
-	float mag()	//magnitude of vec
-	{	return sqrt(x*x + y*y + z*z);	}
-	vec normalize()
+	vec(const vec& v):x(v.x), y(v.y), z(v.z) {}
+	vec operator * (const float &a) const { return vec(x*a,y*a,z*a) ; }	//scalar multiplication
+	vec operator * (const vec &a) const { return vec(x*a.x,y*a.y,z*a.z) ; }	//vec multiplication
+	vec operator + (const vec &a) const { return vec(x+a.x,y+a.y,z+a.z) ; }	// vec addition
+	vec operator - (const vec &a) const { return vec(x-a.x,y-a.y,z-a.z) ; }	//vec subtraction
+	float mag() const	//magnitude of vec
+	{	
+		return sqrt(x*x + y*y + z*z);	
+	}
+	vec normalize() const
 	{	float m=mag();
 		return vec(x/m,y/m,z/m);
 	}
-	float dot(vec v)	//dot product with another vec
+	float dot(vec v) const	//dot product with another vec
 	{	float d = x*v.x+ y*v.y+ z*v.z;
 		return d;
 	}
-	vec cross(vec v)	//cross product with another vec
+	vec cross(vec v) const	//cross product with another vec
 	{	float newx,newy,newz;
 		newx= y*v.z  - z*v.y;
 		newy= z*v.x  - x*v.z;
@@ -34,16 +35,17 @@ class vec
 		return vec(newx,newy,newz);	
 	}
 	friend std::ostream & operator << (std::ostream &os, const vec &v) //print in vec form
-	{	os << "[" << v.x << " " << v.y << " " << v.z << "]";
+	{	os << "[" << v.x << ", " << v.y << ", " << v.z << "]\n";
 		return os;
 	}
-	vec get_values()
+/*	vec get_values()
 	{	return vec(x,y,z);	}
 	void set_values(vec v)
 	{	x = v.x;
 		y = v.y;
 		z = v.z;
-	} 
+	}
+*/	 
 };
 
 class ray
