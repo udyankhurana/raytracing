@@ -6,6 +6,7 @@
 #include<math.h>
 #include<vector>
 #include<queue>
+#include<stack>
 #include "ray.h"
 #define EPSILON 0.000001
 #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -22,7 +23,7 @@ class shape
 	int shapeid,color;
 
 	public:
-	virtual bool intersect(ray &r) = 0;	//virtual function to get intersection
+	virtual bool intersect(ray &r, float& hit_t, int& hit_id) = 0;	//virtual function to get intersection
 	shape(int col,int id): color(col), shapeid(id) {}
 	int get_shapeid()
 	{	return shapeid;		}
@@ -40,7 +41,7 @@ class triangle: public shape
 
 	public:
 	triangle(vec x,vec y,vec z,int col,int id): shape(col,id), a(x), b(y), c(z) {}
-	bool intersect(ray &r)	//Moller-Trumbore algorithm
+	bool intersect(ray &r, float& hit_t, int& hit_id)	//Moller-Trumbore algorithm
 	{	vec v1,v2;	//calculate vecs for side edges
 		vec orig = r.get_origin();
 		vec dir = r.get_direction();
@@ -60,9 +61,11 @@ class triangle: public shape
 		if (V <0.0 || U+V > 1.0) 
 			return false;
 		float param = v2.dot(q) * inv_det;
-		if(param > EPSILON && param < r.get_tmax())
-		{	r.set_tmax(param); //the 't' value assigned if intersection found
-			r.set_rayid(shapeid);
+		if(param > r.get_tmin() && param < r.get_tmax())
+		{	//r.set_tmax(param); //the 't' value assigned if intersection found
+			//r.set_rayid(shapeid);
+			hit_t = param; 
+			hit_id = shapeid;
 			return true;
 		}
 		return false;
@@ -92,7 +95,7 @@ struct sphere: public shape
 
 	public:
 	sphere(vec c,float r,int col,int id): shape(col,id), centre(c), radius(r) {}
-	bool intersect(ray &r)
+	bool intersect(ray &r, float& hit_t, int& hit_id)
 	{	float a,b,c,ans;
 		vec orig = r.get_origin();
 		vec dir = r.get_direction();
@@ -112,8 +115,10 @@ struct sphere: public shape
 			ans = MIN(r1,r2);
 		}
 		if(ans < r.get_tmax())
-		{	r.set_tmax(ans);
-			r.set_rayid(shapeid);
+		{	//r.set_tmax(ans);
+			//r.set_rayid(shapeid);
+			hit_t = ans;
+			hit_id = shapeid;
 			return true;
 		}
 	}
@@ -230,7 +235,7 @@ class bvh
 		std::cout<<"Max= "<<max<<"\n";
 		std::cout<<"Id= "<<id<<"\n_________________________________\n";
 	}
-	bool intersect(ray &r)
+	bool intersect(ray &r, float hit_t)
 	{	vec orig = r.get_origin();
 		vec dir = r.get_direction();	
 		float tmin = (min.x - orig.x) / dir.x;
@@ -259,20 +264,49 @@ class bvh
 			tmax = tzmax;
 		if ((tmin > r.get_tmax()) || (tmax < r.get_tmin())) 
 			return false;
+		hit_t = tmin;
 		return true;
 	}
-	void traverse(ray &r, std::vector<shape*>& a, std::queue<bvh*>& q)
-	{	while(!q.empty())
-		{	bvh *x = q.front();
-			q.pop();
-			if(x->intersect(r))
-			{	if(x->id == -1)
-				{
-					if(x->left != NULL) q.push(x->left);
-					if(x->right != NULL) q.push(x->right);
+	void traverse(ray &r, std::vector<shape*>& a, std::stack<bvh*> &st)
+	{	bvh *x = st.top();
+		float min_t = std::numeric_limits<float>::max();
+		if(!x->intersect(r, min_t)) return;
+	
+		while(!st.empty())
+		{	bvh *x = st.top();
+			st.pop();
+			float ret1 = 0, ret2 = 0;
+			if(x->id == -1)
+			{	float left_min = std::numeric_limits<float>::max();
+				float right_min = std::numeric_limits<float>::max();
+				bool left_intersect = false, right_intersect = false;
+				if(x->left != NULL)  left_intersect = x->left->intersect(r, left_min);
+				if(x->right != NULL) right_intersect = x->right->intersect(r, right_min);
+				if(left_intersect && right_intersect) 
+	                    	{	if(left_min < right_min) 
+					{	st.push(x->right);
+				                st.push(x->left);
+			               	}
+		                	else 
+					{	st.push(x->left);
+					        st.push(x->right);
+			             	}
+		                }
+		                else if(left_intersect) st.push(x->left);
+		                else if(right_intersect) st.push(x->right);
+			}
+			// NOTE IS NOT INTERNAL. ITS A LEAF.!!
+		        else 
+			{	float hit_t = std::numeric_limits<float>::max();
+				int hit_id = -1;
+				if(a[x->id]->intersect(r, hit_t, hit_id))
+				{	// MOST IMPORTANT PIECE OF LOGIC
+					if(hit_t < r.get_tmax())
+					{
+						r.set_tmax(hit_t);
+						r.set_rayid(hit_id);
+					}
 				}
-				else
-					a[x->id]->intersect(r);
 			}
 		}
 	}

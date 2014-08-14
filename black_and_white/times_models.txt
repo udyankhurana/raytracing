@@ -1,25 +1,26 @@
-/*** CURRENT TIME OUTPUTS WITH NAIVE-SPLIT BVH ***/
+/*** NEW TIME OUTPUTS WITH NAIVE-SPLIT BVH ***/
 
 udyan@udyan-K55VM:~/Desktop/CVIT/Ray Tracing/raytracer-code/new$ ./a.out cow.obj cow.pgm 500 500 
 No. of Shapes: 5804
-Time For Reading Input + Building BVH: 25.397827 ms
-Time For Intersection Tests: 283.916091 ms
-Time For Writing To Output: 20.829391 ms
+Time For Reading Input + Building BVH: 26.236716 ms
+Time For Intersection Tests: 252.010492 ms
+Time For Writing To Output: 21.399429 ms
 
 udyan@udyan-K55VM:~/Desktop/CVIT/Ray Tracing/raytracer-code/new$ ./a.out bunny.obj bunny.pgm 500 500 
 No. of Shapes: 69451
-Time For Reading Input + Building BVH: 161.971548 ms
-Time For Intersection Tests: 33339.459483 ms
-Time For Writing To Output: 20.974183 ms
+Time For Reading Input + Building BVH: 161.366614 ms
+Time For Intersection Tests: 33757.216785 ms
+Time For Writing To Output: 20.590718 ms
 
 udyan@udyan-K55VM:~/Desktop/CVIT/Ray Tracing/raytracer-code/new$ ./a.out cow.obj cow2.pgm 800 800
 No. of Shapes: 5804
-Time For Reading Input + Building BVH: 24.516255 ms
-Time For Intersection Tests: 997.280445 ms
-Time For Writing To Output: 53.720088 ms
+Time For Reading Input + Building BVH: 27.157018 ms
+Time For Intersection Tests: 636.527739 ms
+Time For Writing To Output: 53.126637 ms
 
 udyan@udyan-K55VM:~/Desktop/CVIT/Ray Tracing/raytracer-code/new$ ./a.out bunny.obj bunny2.pgm 800 800
 No. of Shapes: 69451
-Time For Reading Input + Building BVH: 166.717309 ms
-Time For Intersection Tests: 90917.349361 ms
-Time For Writing To Output: 53.431820 ms
+Time For Reading Input + Building BVH: 163.308844 ms
+Time For Intersection Tests: 88257.901235 ms
+Time For Writing To Output: 52.527246 ms
+

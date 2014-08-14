@@ -61,9 +61,9 @@ int main(int argc, char *argv[])
 			dir = dir.normalize();
 			ray r = ray(orig,dir);
 			int col = bgcolor;
-			std::queue<bvh*> q;
-			q.push(root);
-			root->traverse(r,shapes,q);	//BVH traversal to find object intersecting with ray
+			std::stack<bvh*> st;
+			st.push(root);
+			root->traverse(r, shapes, st);	//BVH traversal to find object intersecting with ray
 			int rid = r.get_rayid();
 			if(rid != -1)
 				col=shapes[rid]->get_shapecolor();
@@ -86,7 +86,6 @@ int main(int argc, char *argv[])
 	read_time = ((t2.tv_sec - t1.tv_sec)*1000) + (((double)(t2.tv_nsec - t1.tv_nsec))/1000000.0);
 	test_time = ((t3.tv_sec - t2.tv_sec)*1000) + (((double)(t3.tv_nsec - t2.tv_nsec))/1000000.0);
 	write_time = ((t4.tv_sec - t3.tv_sec)*1000) + (((double)(t4.tv_nsec - t3.tv_nsec))/1000000.0);
-	printf("No. of Shapes: %d\n", numshapes);
 	printf("Time For Reading Input + Building BVH: %lf ms\n", read_time);
 	printf("Time For Intersection Tests: %lf ms\n", test_time);
 	printf("Time For Writing To Output: %lf ms\n", write_time);
