@@ -1,0 +1,13 @@
+This is a basic code for Raytracing in color. 
+
+It is a modular OOP code for raytracer with 3-d Vector, Ray, Triangle and Sphere classes with all standard operations and intersection tests. It also takes window size and traingle information and outputs an image based on ray-triangle intersections simulating pin-hole camera model (rays have fixed origin). Further extended this to abstract classes, inheritance and header files and guards. 
+
+It is complete with lighting and shading models, and also recursive ray-tracing for a simple scene.
+
+To compile the code: g++ -Ofast raytracer.cpp -lrt
+To run the code: ./a.out <outputfilename> <width> <height>
+
+NOTE: 
+1. For out1.ppm and out2.ppm, all objects are diffused.
+2. For out1.ppm and out2.ppm, all walls are diifused and the spherical balls are specular in nature.
+3. Timing Information for all inputs is in time.txt.

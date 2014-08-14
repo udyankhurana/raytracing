@@ -1,0 +1,17 @@
+Time for Final Output:
+udyan@udyan-K55VM:~/Desktop/CVIT/Ray Tracing/raytracer-code/colored$ ./a.out out4.ppm 800 800
+No. of Shapes: 12
+Time For Reading Input: 0.045946 ms
+Time For Intersection Tests: 183.818012 ms
+Time For Writing To Output: 110.064784 ms
+
+udyan@udyan-K55VM:~/Desktop/CVIT/Ray Tracing/raytracer-code/colored$ ./a.out out3.ppm 800 800
+No. of Shapes: 12
+Time For Reading Input: 0.094682 ms
+Time For Intersection Tests: 190.534986 ms
+Time For Writing To Output: 111.627509 ms
+
+
+NOTE: 
+1. For out15.ppm and out18.ppm - MAX_DEPTH = 1
+2. For out16.ppm and out17.ppm - MAX_DEPTH = 3
