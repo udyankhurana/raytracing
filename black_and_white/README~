@@ -12,4 +12,4 @@ To run the code: ./a.out <inputfilename> <outputfilename> <width> <height>
 NOTE:
 1. For inputs 'ip1' to 'ip5', outputs are 'op1' to 'op5'.
 2. For cow.obj and bunny.obj, outputs are cow.pgm (500x500), cow2.pgm (800x800), bunny.pgm (500x500), bunny2.pgm (800x800)
-3. Timing Information for small inputs is in times.txt and for large models is in LATEST_TIMES.txt
+3. Timing Information for small inputs is in times.txt and for large models is in times_models.txt

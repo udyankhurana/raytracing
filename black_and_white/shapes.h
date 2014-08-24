@@ -24,6 +24,8 @@ class shape
 
 	public:
 	virtual bool intersect(ray &r, float& hit_t, int& hit_id) = 0;	//virtual function to get intersection
+	virtual vec get_vertex(int num) = 0;
+	virtual void set_vertex(int num, vec x) = 0;
 	shape(int col,int id): color(col), shapeid(id) {}
 	int get_shapeid()
 	{	return shapeid;		}
@@ -72,7 +74,7 @@ class triangle: public shape
 	}
 	vec get_vertex(int num)
 	{	if(num == 1)
-		return a;
+			return a;
 		else if(num == 2)
 			return b;
 		else if(num == 3)
@@ -122,25 +124,25 @@ struct sphere: public shape
 			return true;
 		}
 	}
-	vec get_centre()
-	{	return centre;		}
-	void set_centre(vec c)
-	{	centre = c;		}
+	vec get_vertex(int num)
+	{	if(num == 0) return centre;	}
+	void set_vertex(int num, vec x)
+	{	if(num == 0) centre=x;	}
 	int get_radius()
 	{	return radius;		}
 	void set_radius(float r)
 	{	radius = r;		}
 };
 
-class bvh
+class aabb
 {	protected:
 	vec min,max;
 	int id;
 
 	public:
-	bvh *left, *right;
-	bvh(): min(vec(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(),std::numeric_limits<float>::max())), max(vec(-std::numeric_limits<float>::max(),-std::numeric_limits<float>::max(),-std::numeric_limits<float>::max())),left(NULL),right(NULL),id(-1) {}
-	bvh(const vec& x,const vec& y): min(x), max(y), left(NULL), right(NULL), id(-1) {}
+	//aabb *left, *right;
+	aabb(): min(vec(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(),std::numeric_limits<float>::max())), max(vec(-std::numeric_limits<float>::max(),-std::numeric_limits<float>::max(),-std::numeric_limits<float>::max())),id(-1) {}
+	aabb(const vec& x,const vec& y): min(x), max(y), id(-1) {}
 	vec get_min() const
 	{	return min;		}
 	vec get_max() const
@@ -157,83 +159,12 @@ class bvh
 	{	min.x = MIN(min.x,a.x); min.y = MIN(min.y,a.y); min.z = MIN(min.z,a.z);
 		max.x = MAX(max.x,a.x); max.y = MAX(max.y,a.y); max.z = MAX(max.z,a.z);
 	}
-	bvh group(bvh a, bvh b) 
-	{	bvh x = bvh();
+	aabb group(aabb a, aabb b) 
+	{	aabb x = aabb();
 		vec a1,a2,b1,b2;
 		a1 = a.get_min(); a2 = a.get_max();
 		b1 = b.get_min(); b2 = b.get_max();
-		return bvh(vec(MIN(a1.x,b1.x),MIN(a1.y,b1.y),MIN(a1.z,b1.z)),vec(MAX(a2.x,b2.x),MAX(a2.y,b2.y),MAX(a2.z,b2.z)));
-	}
-	void split(std::vector<bvh>& a)
-	{	if(a.size()==1) 
-		return;
-
-		int i;
-		std::vector <bvh> l,r;
-		//Mid-Point Splitting Algorithm (Not Working)
-		/*	vec xx = max - min;
-			float half, c, m = MAX(MAX(xx.x, xx.y), xx.z);
-			if(m == xx.x)
-			{	half = (max.x + min.x)/2;
-			std::cout<<"half1\n";
-			}
-			else if(m == xx.y)
-			{	half = (max.y + min.y)/2;
-			std::cout<<"half2\n";
-			}
-			else
-			{	half = (max.z + min.z)/2;
-			std::cout<<"half3\n";
-			}
-
-			for(i=0;i<a.size();i++)
-			{	if(m == xx.x)
-			c = (a[i].get_max().x + a[i].get_min().x)/2;
-			else if(m == xx.y)
-			c = (a[i].get_max().y + a[i].get_min().y)/2;
-			else
-			c = (a[i].get_max().z + a[i].get_min().z)/2;
-			if(c<half)
-			l.push_back(a[i]);
-			else
-			r.push_back(a[i]);
-			}
-			std::cout<<"lsize= "<<l.size() << "\trsize= "<<r.size()<<"\n";
-		 */
-		//Naive Splitting Algorithm
-		for(i=0;i<a.size()/2;i++)
-			l.push_back(a[i]);
-
-		for(;i<a.size();i++)
-			r.push_back(a[i]);
-
-		bvh b,n;
-		if(l.size())
-		{	for(i=0;i<l.size();i++)
-			b = b.group(b,l[i]);
-			left = new bvh(b.get_min(),b.get_max());
-		}
-
-		if(r.size())
-		{	for(i=0;i<r.size();i++)
-			n = n.group(n,r[i]);
-			right = new bvh(n.get_min(),n.get_max());
-		}
-
-		if(l.size()==1)
-			left->id=l[0].get_id();
-		if(r.size()==1)
-			right->id=r[0].get_id();
-
-		if(left != NULL) 
-			left->split(l);
-		if(right != NULL) 
-			right->split(r);
-	}
-	void print()
-	{	std::cout<<"Min= "<<min<<"\n";
-		std::cout<<"Max= "<<max<<"\n";
-		std::cout<<"Id= "<<id<<"\n_________________________________\n";
+		return aabb(vec(MIN(a1.x,b1.x),MIN(a1.y,b1.y),MIN(a1.z,b1.z)),vec(MAX(a2.x,b2.x),MAX(a2.y,b2.y),MAX(a2.z,b2.z)));
 	}
 	bool intersect(ray &r, float hit_t)
 	{	vec orig = r.get_origin();
@@ -267,21 +198,141 @@ class bvh
 		hit_t = tmin;
 		return true;
 	}
-	void traverse(ray &r, std::vector<shape*>& a, std::stack<bvh*> &st)
-	{	bvh *x = st.top();
-		float min_t = std::numeric_limits<float>::max();
-		if(!x->intersect(r, min_t)) return;
+};
+
+class bvh_node
+{	protected:
+	int id,flag; 	//id=box id, flag=1(leaf node),0(internal node)
 	
+	public:
+	aabb box;
+	bvh_node *left, *right;
+	bvh_node(aabb b): box(b), id(-1), flag(0), left(NULL), right(NULL) {}
+	int get_flag() const
+	{	return flag;		}
+	//aabb get_box() const
+	//{	return box;		}
+	int get_id() const 
+	{	return id;		}
+	void set_flag(const int& m)
+	{	flag = m;		}
+	//void set_box(const aabb& m)
+	//{	box = m;		}
+	void set_id(int m)
+	{	id = m;		} 
+
+	void split(std::vector<aabb>& a, std::vector<shape*> s)
+	{	if(a.size()==1) 
+		return;
+
+		int i;
+		std::vector <aabb> l,r;
+		std::vector <shape*> sl,sr;
+		std::vector <vec> cents;
+		//Mid-Point Splitting Algorithm (Not Working)		
+		aabb cent_bbox;
+		for(i=0;i<s.size();i++)
+		{	vec cent = (s[i]->get_vertex(1)+s[i]->get_vertex(2)+s[i]->get_vertex(3))*0.333;
+			cent_bbox.insert(cent);
+			cents.push_back(cent);
+		}		
+			
+		vec max = cent_bbox.get_max();
+		vec min = cent_bbox.get_min();
+		vec xx = max - min;
+		float half, c, m = MAX(MAX(xx.x, xx.y), xx.z);
+		if(m == xx.x)
+			half = (max.x + min.x)/2;
+		else if(m == xx.y)
+			half = (max.y + min.y)/2;
+		else
+			half = (max.z + min.z)/2;
+
+		for(i=0;i<a.size();i++)
+		{	if(m == xx.x)
+				c = cents[i].x;
+			else if(m == xx.y)
+				c = cents[i].y;
+			else
+				c = cents[i].z;
+			/*if(m == xx.x)
+				c = (a[i].get_max().x + a[i].get_min().x)/2;
+			else if(m == xx.y)
+				c = (a[i].get_max().y + a[i].get_min().y)/2;
+			else
+				c = (a[i].get_max().z + a[i].get_min().z)/2;*/
+			if(c<half)
+			{	l.push_back(a[i]);
+				sl.push_back(s[i]);
+			}
+			else
+			{	r.push_back(a[i]);
+				sr.push_back(s[i]);
+			}
+		}
+		//std::cout<<"lsize= "<<l.size() << "\trsize= "<<r.size()<<"\n";
+		 
+		//Naive Splitting Algorithm
+		/*for(i=0;i<a.size()/2;i++)
+			l.push_back(a[i]);
+
+		for(;i<a.size();i++)
+			r.push_back(a[i]);
+		*/
+		aabb b,n;
+		if(l.size())
+		{	for(i=0;i<l.size();i++)
+			b = b.group(b,l[i]);
+			left = new bvh_node(b);	//left of node grouped
+		}
+
+		if(r.size())
+		{	for(i=0;i<r.size();i++)
+			n = n.group(n,r[i]);
+			right = new bvh_node(n);
+		}
+
+		/*if(!l.size() || !r.size())
+		{	//std::cout<<"panga ho gaya!\n";
+			return;
+		}*/
+		if(l.size()==1) 
+		{	left->set_id(l[0].get_id());
+			left->set_flag(1);
+		}
+		if(r.size()==1) 
+		{	right->set_id(r[0].get_id());
+			right->set_flag(1);
+		}
+
+		if(left != NULL) 
+			left->split(l,sl);
+		if(right != NULL) 
+			right->split(r,sr);
+	}
+	
+};
+
+class bvh
+{	public:
+	bvh_node *root;
+	bvh(bvh_node *a): root(a) {}
+
+	void traverse(ray &r, std::vector<shape*>& a, std::stack<bvh_node*> &st)
+	{	bvh_node *x = st.top();
+		float min_t = std::numeric_limits<float>::max();
+		if(!(x->box).intersect(r, min_t)) return;
+		
 		while(!st.empty())
-		{	bvh *x = st.top();
+		{	bvh_node *x = st.top();
 			st.pop();
-			float ret1 = 0, ret2 = 0;
-			if(x->id == -1)
-			{	float left_min = std::numeric_limits<float>::max();
+			if(x->get_flag() == 0)
+			{	//intersected_nonleaf++;
+				float left_min = std::numeric_limits<float>::max();
 				float right_min = std::numeric_limits<float>::max();
 				bool left_intersect = false, right_intersect = false;
-				if(x->left != NULL)  left_intersect = x->left->intersect(r, left_min);
-				if(x->right != NULL) right_intersect = x->right->intersect(r, right_min);
+				if(x->left != NULL)  left_intersect = (x->left->box).intersect(r, left_min);
+				if(x->right != NULL) right_intersect = (x->right->box).intersect(r, right_min);
 				if(left_intersect && right_intersect) 
 	                    	{	if(left_min < right_min) 
 					{	st.push(x->right);
@@ -292,15 +343,17 @@ class bvh
 					        st.push(x->right);
 			             	}
 		                }
-		                else if(left_intersect) st.push(x->left);
-		                else if(right_intersect) st.push(x->right);
+		                else if(left_intersect)  st.push(x->left);	
+		                else if(right_intersect) st.push(x->right); 
 			}
-			// NOTE IS NOT INTERNAL. ITS A LEAF.!!
+			// NODE IS NOT INTERNAL. ITS A LEAF.!!
 		        else 
-			{	float hit_t = std::numeric_limits<float>::max();
+			{	//intersected_leaf++;
+				float hit_t = std::numeric_limits<float>::max();
 				int hit_id = -1;
-				if(a[x->id]->intersect(r, hit_t, hit_id))
-				{	// MOST IMPORTANT PIECE OF LOGIC
+				if(a[x->get_id()]->intersect(r, hit_t, hit_id))
+				{	//intersected_prims++;
+					// MOST IMPORTANT PIECE OF LOGIC
 					if(hit_t < r.get_tmax())
 					{
 						r.set_tmax(hit_t);
@@ -309,6 +362,7 @@ class bvh
 				}
 			}
 		}
+		
 	}
 };
 

@@ -13,7 +13,7 @@
 #include "ModelLoader.h"
 using namespace std;
 
-bvh *root = NULL;
+bvh_node *root = NULL;
 int main(int argc, char *argv[])
 {	
 	int width = atoi(argv[3]), height = atoi(argv[4]);
@@ -21,19 +21,20 @@ int main(int argc, char *argv[])
 	unsigned int pixelgrid[805][805]={0};	//output pixel grid: width,height limit = 500
 	float xx,yy,zz,min = 10, max = -10;
 	vector < shape* > shapes;
-	vector < bvh > box_stack;
+	vector < aabb > box_stack;
 
 	struct timespec t1, t2, t3, t4;
 	double read_time,test_time,write_time;
 	clock_gettime(CLOCK_MONOTONIC, &t1);	
 
 	//Read Input
-	bvh world_boundingbox;
+	aabb world_boundingbox;
 	Loader loader(argv[1]);
 	loader.Load_Model(shapes, world_boundingbox, box_stack);
 	
-	root = new bvh(world_boundingbox.get_min(),world_boundingbox.get_max());
-	root->split(box_stack);	//Building the BVH
+	root = new bvh_node(world_boundingbox);	//make it bvh_node(aabb)
+	bvh master = bvh(root);	
+	master.root->split(box_stack, shapes);	//Building the aabb
 	clock_gettime(CLOCK_MONOTONIC, &t2);	//calculating time for the above process
 
 	//Fixed Origin: Simulating a Pin-hole camera
@@ -61,15 +62,16 @@ int main(int argc, char *argv[])
 			dir = dir.normalize();
 			ray r = ray(orig,dir);
 			int col = bgcolor;
-			std::stack<bvh*> st;
+			std::stack<bvh_node*> st;
 			st.push(root);
-			root->traverse(r, shapes, st);	//BVH traversal to find object intersecting with ray
+			master.traverse(r, shapes, st);	//BVH traversal to find object intersecting with ray
 			int rid = r.get_rayid();
 			if(rid != -1)
 				col=shapes[rid]->get_shapecolor();
 			pixelgrid[i][j] = col;
 		}
 	}
+	//root->print_stats();
 
 	for(i=0;i<numshapes;i++)	
 		delete shapes[i];	//Freeing up memory to avoid leakage

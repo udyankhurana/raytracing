@@ -162,7 +162,7 @@ class Loader
     	Loader(char * meshfile): m_meshfile_path(meshfile) {}
 	Loader(char* meshfile,char* materialfile): m_meshfile_path(meshfile), m_materialfile_path(materialfile) {}
 
-	void Load_Model(std::vector< shape* > &shapes, bvh &world_boundingbox, std::vector< bvh > &box_stack)
+	void Load_Model(std::vector< shape* > &shapes, aabb &world_boundingbox, std::vector< aabb > &box_stack)
 	{
 		double start = 0.0, end = 0.0;
 		std::ifstream ifs;
@@ -262,10 +262,11 @@ class Loader
 			y = vec(m_meshes[0].m_vertices[index.y].x,m_meshes[0].m_vertices[index.y].y,m_meshes[0].m_vertices[index.y].z);
 			z = vec(m_meshes[0].m_vertices[index.z].x,m_meshes[0].m_vertices[index.z].y,m_meshes[0].m_vertices[index.z].z);
 			shapes.push_back(new triangle(x,y,z,col,i));
-			bvh box;
+			aabb box;
 			box.insert(x); box.insert(y); box.insert(z);
 			box.set_id(i); 
-			box_stack.push_back(box);
+			//make bvh_node here
+			box_stack.push_back(box);	//this will become node_stack
 			world_boundingbox = world_boundingbox.group(world_boundingbox,box);
 		}
 	}
