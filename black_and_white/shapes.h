@@ -202,12 +202,12 @@ class aabb
 
 class bvh_node
 {	protected:
-	int id,flag; 	//id=box id, flag=1(leaf node),0(internal node)
+	int flag; 	//flag=1(leaf node),0(internal node)
 	
 	public:
 /**/	std::vector <aabb> boxes;	//>=1 nodes per child possible
 	bvh_node *left, *right;
-	bvh_node(std::vector <aabb> b): box(b), id(-1), flag(0), left(NULL), right(NULL) {}
+	bvh_node(std::vector <aabb> b): box(b), flag(0), left(NULL), right(NULL) {}
 	int get_flag() const
 	{	return flag;		}
 	int get_id() const 
@@ -221,18 +221,26 @@ class bvh_node
 	{	if(a.size()==1) 
 		return;
 
-		int i;
-/**/		int no_buckets=5;				//To DEFINE
-/**/		float cost_rbtest, cost_rttest, cost_trav;	//To DEFINE
-		int split_x[no_buckets],split_z[no_buckets],split_y[no_buckets];
+		std::vector <aabb> l,r;
+		std::vector <shape*> sl,sr;
+		int i,j,k;
+/**/		int no_buckets=5;	//no_buckets-1 split planes (=4)			
+/**/		float cost_rbtest, cost_rttest, cost_trav;	//TO SET
+		float sa_parent;	
+		float cost_int[3][no_buckets],cost_leaf;
+		int split[3][no_buckets];
 		vec range,bmax,bmin;
 		bmax=boxes[0].get_max();
 		bmin=boxes[0].get_min();
 		range=bmax-bmin;
-		for(i=0;i<no_buckets;i++)
-		{	split_x[i]=bmin.x+((i+1)/no_buckets)*range.x;
-			split_y[i]=bmin.y+((i+1)/no_buckets)*range.y;
-			split_z[i]=bmin.z+((i+1)/no_buckets)*range.z;
+		sa_parent=2*(range.x*range.y+range.z*range.y+range.x*range.z);
+		for(j=0;j<3;j++)
+		{	float r;
+			if(j==0) r=range.x;	
+			else if(j==1) r=range.y;	
+			else r=range.z;	
+			for(i=0;i<no_buckets-1;i++)
+				split[j][i]=bmin.x+((i+1)/no_buckets)*r;
 		}
 		std::vector <vec> midpts;
 		aabb cent_bbox;
@@ -240,66 +248,80 @@ class bvh_node
 		{	vec mid = (a[i]->get_max() + a[i]->get_min())*0.5;
 			midpts.push_back(mid);
 		}		
-		
-		//Mid Pt ALgo from here	
-		/*std::vector <aabb> l,r;
-		std::vector <shape*> sl,sr;
-		vec max = cent_bbox.get_max();
-		vec min = cent_bbox.get_min();
-		vec xx = max - min;
-		float half, c, m = MAX(MAX(xx.x, xx.y), xx.z);
-		if(m == xx.x)
-			half = (max.x + min.x)/2;
-		else if(m == xx.y)
-			half = (max.y + min.y)/2;
-		else
-			half = (max.z + min.z)/2;
-
-		for(i=0;i<a.size();i++)
-		{	if(m == xx.x)
-				c = cents[i].x;
-			else if(m == xx.y)
-				c = cents[i].y;
-			else
-				c = cents[i].z;
-
-			if(c<half)
-			{	l.push_back(a[i]);
-				sl.push_back(s[i]);
-			}
-			else
-			{	r.push_back(a[i]);
-				sr.push_back(s[i]);
-			}
+		//calculating internal node costs
+		for(k=0;k<3;k++)
+		{	for(i=0;i<no_buckets-1;i++)
+			{	int num_tri1=0,num_tri2=0;
+				float sa_1,sa_2;
+				aabb c1,c2;
+				vec range1,range2;
+				for(j=0;j<midpts.size();j++)
+				{	if(midpts[j].x<split[k][i])
+					{	num_tri1++;
+						c1=c1.group(c1,a[j]);
+					}
+					else
+					{	num_tri2++;
+						c2=c2.group(c2,a[j]);
+					}
+				}
+				range1=c1.get_max() - c1.get_min();
+				sa_1=2*(range1.x*range1.y+range1.z*range1.y+range1.x*range1.z);
+				range2=c2.get_max() - c2.get_min();
+				sa_2=2*(range2.x*range2.y+range2.z*range2.y+range2.x*range2.z);
+				cost_int[k][i] = (sa_1*num_tri1 + sa_2*num_tri2)/sa_parent + cost_trav; 
+			}	
 		}
-
+		//leaf node cost
+		cost_leaf = cost_rbtest*(a.size()+1) + cost_rttest*a.size();
+		float min_cost=std::numeric_limits<float>::max();
+		int dim=0,split_no=0;
+		for(k=0;k<3;k++)
+		{	for(i=0;i<no_buckets-1;i++)
+			{	if(min_cost>=cost_int[k][i])
+				{	min_cost=cost_int[k][i];
+					dim=k;
+					split_no=i;
+				}
+			}	
+		}
+		if(cost_leaf < min_cost)
+		{	boxes=a;
+			flag=1;
+			return;
+		}
+		else
+		{	for(j=0;j<a.size();j++)
+			{	if(midpts[j].x<split[dim][split_no])
+				{	l.push_back(a[j]);
+					sl.push_back(s[j]);
+				}
+				else
+				{	r.push_back(a[j]);
+					sr.push_back(s[j]);
+				}
+			}	
+		}			
 		aabb b,n;
+		std::vector<aabb>b1,n1;
 		if(l.size())
 		{	for(i=0;i<l.size();i++)
 				b = b.group(b,l[i]);
-			left = new bvh_node(b);	//left of node grouped
+			b1.push_back(b);
+			left = new bvh_node(b1);	//left of node grouped
 		}
 		if(r.size())
 		{	for(i=0;i<r.size();i++)
 				n = n.group(n,r[i]);
-			right = new bvh_node(n);
+			n1.push_back(n);
+			right = new bvh_node(n1);
 		}
-
-		if(l.size()==1) 
-		{	left->set_id(l[0].get_id());
-			left->set_flag(1);
-		}
-		if(r.size()==1) 
-		{	right->set_id(r[0].get_id());
-			right->set_flag(1);
-		}*/
 
 		if(left != NULL) 
 			left->split(l,sl);
 		if(right != NULL) 
 			right->split(r,sr);
 	}
-	
 };
 
 class bvh
