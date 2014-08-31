@@ -205,19 +205,15 @@ class bvh_node
 	int id,flag; 	//id=box id, flag=1(leaf node),0(internal node)
 	
 	public:
-	aabb box;
+/**/	std::vector <aabb> boxes;	//>=1 nodes per child possible
 	bvh_node *left, *right;
-	bvh_node(aabb b): box(b), id(-1), flag(0), left(NULL), right(NULL) {}
+	bvh_node(std::vector <aabb> b): box(b), id(-1), flag(0), left(NULL), right(NULL) {}
 	int get_flag() const
 	{	return flag;		}
-	//aabb get_box() const
-	//{	return box;		}
 	int get_id() const 
 	{	return id;		}
 	void set_flag(const int& m)
 	{	flag = m;		}
-	//void set_box(const aabb& m)
-	//{	box = m;		}
 	void set_id(int m)
 	{	id = m;		} 
 
@@ -226,17 +222,28 @@ class bvh_node
 		return;
 
 		int i;
-		std::vector <aabb> l,r;
-		std::vector <shape*> sl,sr;
-		std::vector <vec> cents;
-		//Mid-Point Splitting Algorithm (Not Working)		
+/**/		int no_buckets=5;				//To DEFINE
+/**/		float cost_rbtest, cost_rttest, cost_trav;	//To DEFINE
+		int split_x[no_buckets],split_z[no_buckets],split_y[no_buckets];
+		vec range,bmax,bmin;
+		bmax=boxes[0].get_max();
+		bmin=boxes[0].get_min();
+		range=bmax-bmin;
+		for(i=0;i<no_buckets;i++)
+		{	split_x[i]=bmin.x+((i+1)/no_buckets)*range.x;
+			split_y[i]=bmin.y+((i+1)/no_buckets)*range.y;
+			split_z[i]=bmin.z+((i+1)/no_buckets)*range.z;
+		}
+		std::vector <vec> midpts;
 		aabb cent_bbox;
-		for(i=0;i<s.size();i++)
-		{	vec cent = (s[i]->get_vertex(1)+s[i]->get_vertex(2)+s[i]->get_vertex(3))*0.333;
-			cent_bbox.insert(cent);
-			cents.push_back(cent);
+		for(i=0;i<a.size();i++)
+		{	vec mid = (a[i]->get_max() + a[i]->get_min())*0.5;
+			midpts.push_back(mid);
 		}		
-			
+		
+		//Mid Pt ALgo from here	
+		/*std::vector <aabb> l,r;
+		std::vector <shape*> sl,sr;
 		vec max = cent_bbox.get_max();
 		vec min = cent_bbox.get_min();
 		vec xx = max - min;
@@ -255,12 +262,7 @@ class bvh_node
 				c = cents[i].y;
 			else
 				c = cents[i].z;
-			/*if(m == xx.x)
-				c = (a[i].get_max().x + a[i].get_min().x)/2;
-			else if(m == xx.y)
-				c = (a[i].get_max().y + a[i].get_min().y)/2;
-			else
-				c = (a[i].get_max().z + a[i].get_min().z)/2;*/
+
 			if(c<half)
 			{	l.push_back(a[i]);
 				sl.push_back(s[i]);
@@ -270,32 +272,19 @@ class bvh_node
 				sr.push_back(s[i]);
 			}
 		}
-		//std::cout<<"lsize= "<<l.size() << "\trsize= "<<r.size()<<"\n";
-		 
-		//Naive Splitting Algorithm
-		/*for(i=0;i<a.size()/2;i++)
-			l.push_back(a[i]);
 
-		for(;i<a.size();i++)
-			r.push_back(a[i]);
-		*/
 		aabb b,n;
 		if(l.size())
 		{	for(i=0;i<l.size();i++)
-			b = b.group(b,l[i]);
+				b = b.group(b,l[i]);
 			left = new bvh_node(b);	//left of node grouped
 		}
-
 		if(r.size())
 		{	for(i=0;i<r.size();i++)
-			n = n.group(n,r[i]);
+				n = n.group(n,r[i]);
 			right = new bvh_node(n);
 		}
 
-		/*if(!l.size() || !r.size())
-		{	//std::cout<<"panga ho gaya!\n";
-			return;
-		}*/
 		if(l.size()==1) 
 		{	left->set_id(l[0].get_id());
 			left->set_flag(1);
@@ -303,7 +292,7 @@ class bvh_node
 		if(r.size()==1) 
 		{	right->set_id(r[0].get_id());
 			right->set_flag(1);
-		}
+		}*/
 
 		if(left != NULL) 
 			left->split(l,sl);
@@ -326,6 +315,7 @@ class bvh
 		while(!st.empty())
 		{	bvh_node *x = st.top();
 			st.pop();
+			// INTERNAL NODE
 			if(x->get_flag() == 0)
 			{	//intersected_nonleaf++;
 				float left_min = std::numeric_limits<float>::max();
@@ -346,14 +336,13 @@ class bvh
 		                else if(left_intersect)  st.push(x->left);	
 		                else if(right_intersect) st.push(x->right); 
 			}
-			// NODE IS NOT INTERNAL. ITS A LEAF.!!
+			// LEAF NODE
 		        else 
 			{	//intersected_leaf++;
 				float hit_t = std::numeric_limits<float>::max();
 				int hit_id = -1;
 				if(a[x->get_id()]->intersect(r, hit_t, hit_id))
 				{	//intersected_prims++;
-					// MOST IMPORTANT PIECE OF LOGIC
 					if(hit_t < r.get_tmax())
 					{
 						r.set_tmax(hit_t);

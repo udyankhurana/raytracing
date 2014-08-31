@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 {	
 	int width = atoi(argv[3]), height = atoi(argv[4]);
 	int numshapes,i=0,j=0,k=0,color,bgcolor=10;
-	unsigned int pixelgrid[805][805]={0};	//output pixel grid: width,height limit = 500
+	unsigned int pixelgrid[1024][1024]={0};	//output pixel grid: width,height limit = 500
 	float xx,yy,zz,min = 10, max = -10;
 	vector < shape* > shapes;
 	vector < aabb > box_stack;
@@ -31,8 +31,9 @@ int main(int argc, char *argv[])
 	aabb world_boundingbox;
 	Loader loader(argv[1]);
 	loader.Load_Model(shapes, world_boundingbox, box_stack);
-	
-	root = new bvh_node(world_boundingbox);	//make it bvh_node(aabb)
+/**/	vector<aabb> wbb;
+/**/	wbb.push_back(world_boundingbox);
+	root= new bvh_node(wbb);	//make it bvh_node(aabb)
 	bvh master = bvh(root);	
 	master.root->split(box_stack, shapes);	//Building the aabb
 	clock_gettime(CLOCK_MONOTONIC, &t2);	//calculating time for the above process
@@ -91,5 +92,6 @@ int main(int argc, char *argv[])
 	printf("Time For Reading Input + Building BVH: %lf ms\n", read_time);
 	printf("Time For Intersection Tests: %lf ms\n", test_time);
 	printf("Time For Writing To Output: %lf ms\n", write_time);
+	printf("TOTAL TIME: %lf ms\n", read_time+test_time+write_time);
 	return 0;
 }
