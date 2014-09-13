@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 	loader.Load_Model(shapes, world_boundingbox, box_stack);
 /**/	vector<aabb> wbb;
 /**/	wbb.push_back(world_boundingbox);
-	root= new bvh_node(wbb);	//make it bvh_node(aabb)
+	root= new bvh_node(wbb);
 	bvh master = bvh(root);	
 	master.root->split(box_stack, shapes);	//Building the aabb
 	clock_gettime(CLOCK_MONOTONIC, &t2);	//calculating time for the above process

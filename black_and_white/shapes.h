@@ -11,7 +11,7 @@
 #define EPSILON 0.000001
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
-
+int ctr=0;
 void swap(float &a, float &b)
 {	float temp = a;
 	a = b;
@@ -207,56 +207,64 @@ class bvh_node
 	public:
 /**/	std::vector <aabb> boxes;	//>=1 nodes per child possible
 	bvh_node *left, *right;
-	bvh_node(std::vector <aabb> b): box(b), flag(0), left(NULL), right(NULL) {}
+	bvh_node(std::vector <aabb> b): boxes(b), flag(0), left(NULL), right(NULL) {}
 	int get_flag() const
 	{	return flag;		}
-	int get_id() const 
-	{	return id;		}
 	void set_flag(const int& m)
 	{	flag = m;		}
-	void set_id(int m)
-	{	id = m;		} 
 
 	void split(std::vector<aabb>& a, std::vector<shape*> s)
-	{	if(a.size()==1) 
+	{	ctr++;
+		//printf("ctr=%d\n",ctr);
+		if(a.size()==1) 
 		return;
 
 		std::vector <aabb> l,r;
 		std::vector <shape*> sl,sr;
 		int i,j,k;
-/**/		int no_buckets=5;	//no_buckets-1 split planes (=4)			
-/**/		float cost_rbtest, cost_rttest, cost_trav;	//TO SET
-		float sa_parent;	
+		int no_buckets=5;	//no of split planes = no_buckets-1			
+		float cost_rbtest=1, cost_rttest=3, cost_trav=4, scale=0.35;
 		float cost_int[3][no_buckets],cost_leaf;
-		int split[3][no_buckets];
+		float split[3][no_buckets];
 		vec range,bmax,bmin;
 		bmax=boxes[0].get_max();
 		bmin=boxes[0].get_min();
 		range=bmax-bmin;
-		sa_parent=2*(range.x*range.y+range.z*range.y+range.x*range.z);
+		float sa_parent=2*(range.x*range.y+range.z*range.y+range.x*range.z);
 		for(j=0;j<3;j++)
-		{	float r;
-			if(j==0) r=range.x;	
-			else if(j==1) r=range.y;	
-			else r=range.z;	
+		{	float r,b;
+			if(j==0) 
+			{	r=range.x;	
+				b=bmin.x;
+			}
+			else if(j==1)
+			{	r=range.y;	
+				b=bmin.y;
+			}
+			else	
+			{	r=range.z;	
+				b=bmin.z;
+			}
 			for(i=0;i<no_buckets-1;i++)
-				split[j][i]=bmin.x+((i+1)/no_buckets)*r;
+				split[j][i]=b+float((float(i+1)/no_buckets)*r);
 		}
 		std::vector <vec> midpts;
-		aabb cent_bbox;
 		for(i=0;i<a.size();i++)
-		{	vec mid = (a[i]->get_max() + a[i]->get_min())*0.5;
+		{	vec mid = (a[i].get_max() + a[i].get_min())*0.5;
 			midpts.push_back(mid);
 		}		
 		//calculating internal node costs
 		for(k=0;k<3;k++)
 		{	for(i=0;i<no_buckets-1;i++)
 			{	int num_tri1=0,num_tri2=0;
-				float sa_1,sa_2;
+				float sa_1=0,sa_2=0,mid_dim=0;
 				aabb c1,c2;
 				vec range1,range2;
 				for(j=0;j<midpts.size();j++)
-				{	if(midpts[j].x<split[k][i])
+				{	if(k==0) mid_dim=midpts[j].x;
+					else if(k==1) mid_dim=midpts[j].y;
+					else mid_dim=midpts[j].z;
+					if(mid_dim<split[k][i])
 					{	num_tri1++;
 						c1=c1.group(c1,a[j]);
 					}
@@ -269,11 +277,15 @@ class bvh_node
 				sa_1=2*(range1.x*range1.y+range1.z*range1.y+range1.x*range1.z);
 				range2=c2.get_max() - c2.get_min();
 				sa_2=2*(range2.x*range2.y+range2.z*range2.y+range2.x*range2.z);
-				cost_int[k][i] = (sa_1*num_tri1 + sa_2*num_tri2)/sa_parent + cost_trav; 
+				float split_cost;
+				if(num_tri1 && num_tri2) split_cost = (sa_1*num_tri1 + sa_2*num_tri2);
+				else if(num_tri1) split_cost = sa_1*num_tri1;
+				else if(num_tri2) split_cost = sa_2*num_tri2;
+				cost_int[k][i] = split_cost/sa_parent + cost_trav; 
 			}	
-		}
+		}	 
 		//leaf node cost
-		cost_leaf = cost_rbtest*(a.size()+1) + cost_rttest*a.size();
+		cost_leaf = (cost_rbtest*(a.size()+1) + cost_rttest*a.size())*scale;
 		float min_cost=std::numeric_limits<float>::max();
 		int dim=0,split_no=0;
 		for(k=0;k<3;k++)
@@ -285,14 +297,20 @@ class bvh_node
 				}
 			}	
 		}
+		
 		if(cost_leaf < min_cost)
 		{	boxes=a;
 			flag=1;
 			return;
 		}
 		else
-		{	for(j=0;j<a.size();j++)
-			{	if(midpts[j].x<split[dim][split_no])
+		{	float mid_dim;
+			for(j=0;j<a.size();j++)
+			{	if(dim==0) mid_dim=midpts[j].x;
+				else if(dim==1) mid_dim=midpts[j].y;
+				else mid_dim=midpts[j].z;
+
+				if(mid_dim<split[dim][split_no])
 				{	l.push_back(a[j]);
 					sl.push_back(s[j]);
 				}
@@ -300,27 +318,27 @@ class bvh_node
 				{	r.push_back(a[j]);
 					sr.push_back(s[j]);
 				}
-			}	
-		}			
-		aabb b,n;
-		std::vector<aabb>b1,n1;
-		if(l.size())
-		{	for(i=0;i<l.size();i++)
-				b = b.group(b,l[i]);
-			b1.push_back(b);
-			left = new bvh_node(b1);	//left of node grouped
-		}
-		if(r.size())
-		{	for(i=0;i<r.size();i++)
-				n = n.group(n,r[i]);
-			n1.push_back(n);
-			right = new bvh_node(n1);
-		}
-
-		if(left != NULL) 
-			left->split(l,sl);
-		if(right != NULL) 
-			right->split(r,sr);
+			}
+				
+			aabb b,n;
+			std::vector<aabb>b1,n1;
+			if(l.size())
+			{	for(i=0;i<l.size();i++)
+					b = b.group(b,l[i]);
+				b1.push_back(b);
+				left = new bvh_node(b1);	//left of node grouped
+			}
+			if(r.size())
+			{	for(i=0;i<r.size();i++)
+					n = n.group(n,r[i]);
+				n1.push_back(n);
+				right = new bvh_node(n1);
+			}
+			if(left != NULL) 
+				left->split(l,sl);
+			if(right != NULL) 
+				right->split(r,sr);
+		}	
 	}
 };
 
@@ -329,22 +347,57 @@ class bvh
 	bvh_node *root;
 	bvh(bvh_node *a): root(a) {}
 
-	void traverse(ray &r, std::vector<shape*>& a, std::stack<bvh_node*> &st)
+	void traverse(ray &r, std::vector<shape*>& a, std::stack<bvh_node*> &st)	//internal nodes - 1 element' boxes' array
 	{	bvh_node *x = st.top();
 		float min_t = std::numeric_limits<float>::max();
-		if(!(x->box).intersect(r, min_t)) return;
+		if((x->get_flag()==0)&&(!(x->boxes[0]).intersect(r, min_t))) return;
 		
 		while(!st.empty())
 		{	bvh_node *x = st.top();
+			int leaf_node = x->get_flag();
 			st.pop();
 			// INTERNAL NODE
-			if(x->get_flag() == 0)
+			if(!leaf_node)
 			{	//intersected_nonleaf++;
 				float left_min = std::numeric_limits<float>::max();
 				float right_min = std::numeric_limits<float>::max();
 				bool left_intersect = false, right_intersect = false;
-				if(x->left != NULL)  left_intersect = (x->left->box).intersect(r, left_min);
-				if(x->right != NULL) right_intersect = (x->right->box).intersect(r, right_min);
+				if(x->left != NULL)  
+				{	if (x->left->get_flag() == 0)
+						left_intersect = (x->left->boxes[0]).intersect(r, left_min);
+					else	//if left child is aleaf node
+					{	int i;
+						for(i=0;i<(x->left->boxes).size();i++)
+						{	float hit_t = std::numeric_limits<float>::max();
+							int hit_id = -1;
+							if(a[(x->left->boxes[i]).get_id()]->intersect(r, hit_t, hit_id))
+							{	if(hit_t < r.get_tmax())
+								{
+									r.set_tmax(hit_t);
+									r.set_rayid(hit_id);
+								}
+							}
+						}
+					}
+				}
+				if(x->right != NULL)  
+				{	if (x->right->get_flag() == 0)
+						right_intersect = (x->right->boxes[0]).intersect(r, right_min);
+					else	//if right child is aleaf node
+					{	int i;
+						for(i=0;i<(x->right->boxes).size();i++)
+						{	float hit_t = std::numeric_limits<float>::max();
+							int hit_id = -1;
+							if(a[(x->right->boxes[i]).get_id()]->intersect(r, hit_t, hit_id))
+							{	if(hit_t < r.get_tmax())
+								{
+									r.set_tmax(hit_t);
+									r.set_rayid(hit_id);
+								}
+							}
+						}
+					}
+				}
 				if(left_intersect && right_intersect) 
 	                    	{	if(left_min < right_min) 
 					{	st.push(x->right);
@@ -359,21 +412,21 @@ class bvh
 		                else if(right_intersect) st.push(x->right); 
 			}
 			// LEAF NODE
-		        else 
-			{	//intersected_leaf++;
-				float hit_t = std::numeric_limits<float>::max();
-				int hit_id = -1;
-				if(a[x->get_id()]->intersect(r, hit_t, hit_id))
-				{	//intersected_prims++;
-					if(hit_t < r.get_tmax())
-					{
-						r.set_tmax(hit_t);
-						r.set_rayid(hit_id);
+			else	//if node is aleaf node
+			{	int i;
+				for(i=0;i<(x->boxes).size();i++)
+				{	float hit_t = std::numeric_limits<float>::max();
+					int hit_id = -1;
+					if(a[(x->boxes[i]).get_id()]->intersect(r, hit_t, hit_id)) //directly doing ray-triangle intersections
+					{	if(hit_t < r.get_tmax())			//instead of using ray-box then triangle
+						{
+							r.set_tmax(hit_t);
+							r.set_rayid(hit_id);
+						}
 					}
 				}
 			}
 		}
-		
 	}
 };
 
