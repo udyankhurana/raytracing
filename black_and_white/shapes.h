@@ -11,7 +11,6 @@
 #define EPSILON 0.000001
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
-int ctr=0;
 void swap(float &a, float &b)
 {	float temp = a;
 	a = b;
@@ -137,24 +136,18 @@ struct sphere: public shape
 class aabb
 {	protected:
 	vec min,max;
-	int id;
 
 	public:
-	//aabb *left, *right;
-	aabb(): min(vec(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(),std::numeric_limits<float>::max())), max(vec(-std::numeric_limits<float>::max(),-std::numeric_limits<float>::max(),-std::numeric_limits<float>::max())),id(-1) {}
-	aabb(const vec& x,const vec& y): min(x), max(y), id(-1) {}
+	aabb(): min(vec(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(),std::numeric_limits<float>::max())), max(vec(-std::numeric_limits<float>::max(),-std::numeric_limits<float>::max(),-std::numeric_limits<float>::max())) {}
+	aabb(const vec& x,const vec& y): min(x), max(y) {}
 	vec get_min() const
 	{	return min;		}
 	vec get_max() const
 	{	return max;		}
-	int get_id() const 
-	{	return id;		}
 	void set_min(const vec& m)
 	{	min = m;		}
 	void set_max(const vec& m)
 	{	max = m;		}
-	void set_id(int m)
-	{	id = m;		}
 	void insert(vec a)
 	{	min.x = MIN(min.x,a.x); min.y = MIN(min.y,a.y); min.z = MIN(min.z,a.z);
 		max.x = MAX(max.x,a.x); max.y = MAX(max.y,a.y); max.z = MAX(max.z,a.z);
@@ -205,30 +198,32 @@ class bvh_node
 	int flag; 	//flag=1(leaf node),0(internal node)
 	
 	public:
-/**/	std::vector <aabb> boxes;	//>=1 nodes per child possible
+	aabb box;	//>=1 nodes per child possible
+	std::vector <int> ids;	//empty for internal nodes, filled for leaf nodes
 	bvh_node *left, *right;
-	bvh_node(std::vector <aabb> b): boxes(b), flag(0), left(NULL), right(NULL) {}
+	bvh_node(aabb b, std::vector <int> id): box(b), ids(id), flag(0), left(NULL), right(NULL) {}
 	int get_flag() const
 	{	return flag;		}
 	void set_flag(const int& m)
 	{	flag = m;		}
 
-	void split(std::vector<aabb>& a, std::vector<shape*> s)
-	{	ctr++;
-		//printf("ctr=%d\n",ctr);
-		if(a.size()==1) 
-		return;
+	void split(aabb &bigbox, std::vector<aabb>& a,std::vector<int>& id)
+	{	if(a.size()<=4) //if size<=4 directly make it a leaf node
+		{	box=bigbox;
+			ids=id;
+			flag=1;
+			return;
+		}
 
-		std::vector <aabb> l,r;
-		std::vector <shape*> sl,sr;
+		std::vector <int> idl,idr;
 		int i,j,k;
 		int no_buckets=5;	//no of split planes = no_buckets-1			
-		float cost_rbtest=1, cost_rttest=3, cost_trav=4, scale=0.35;
+		float cost_rttest=1, cost_trav=0.125;
 		float cost_int[3][no_buckets],cost_leaf;
 		float split[3][no_buckets];
 		vec range,bmax,bmin;
-		bmax=boxes[0].get_max();
-		bmin=boxes[0].get_min();
+		bmax=box.get_max();
+		bmin=box.get_min();
 		range=bmax-bmin;
 		float sa_parent=2*(range.x*range.y+range.z*range.y+range.x*range.z);
 		for(j=0;j<3;j++)
@@ -249,10 +244,12 @@ class bvh_node
 				split[j][i]=b+float((float(i+1)/no_buckets)*r);
 		}
 		std::vector <vec> midpts;
-		for(i=0;i<a.size();i++)
-		{	vec mid = (a[i].get_max() + a[i].get_min())*0.5;
+		for(i=0;i<id.size();i++)
+		{	vec mid = (a[id[i]].get_max() + a[id[i]].get_min())*0.5;
 			midpts.push_back(mid);
 		}		
+		//leaf node cost
+		cost_leaf = cost_rttest*id.size();
 		//calculating internal node costs
 		for(k=0;k<3;k++)
 		{	for(i=0;i<no_buckets-1;i++)
@@ -260,17 +257,17 @@ class bvh_node
 				float sa_1=0,sa_2=0,mid_dim=0;
 				aabb c1,c2;
 				vec range1,range2;
-				for(j=0;j<midpts.size();j++)
+				for(j=0;j<id.size();j++)
 				{	if(k==0) mid_dim=midpts[j].x;
 					else if(k==1) mid_dim=midpts[j].y;
 					else mid_dim=midpts[j].z;
 					if(mid_dim<split[k][i])
 					{	num_tri1++;
-						c1=c1.group(c1,a[j]);
+						c1=c1.group(c1,a[id[j]]);
 					}
 					else
 					{	num_tri2++;
-						c2=c2.group(c2,a[j]);
+						c2=c2.group(c2,a[id[j]]);
 					}
 				}
 				range1=c1.get_max() - c1.get_min();
@@ -284,60 +281,54 @@ class bvh_node
 				cost_int[k][i] = split_cost/sa_parent + cost_trav; 
 			}	
 		}	 
-		//leaf node cost
-		cost_leaf = (cost_rbtest*(a.size()+1) + cost_rttest*a.size())*scale;
 		float min_cost=std::numeric_limits<float>::max();
 		int dim=0,split_no=0;
 		for(k=0;k<3;k++)
 		{	for(i=0;i<no_buckets-1;i++)
-			{	if(min_cost>=cost_int[k][i])
+			{	//printf("cost[%d][%d] = %f\n",k,i,cost_int[k][i]);
+				if(min_cost>=cost_int[k][i])
 				{	min_cost=cost_int[k][i];
 					dim=k;
 					split_no=i;
 				}
 			}	
 		}
-		
+		//printf("leaf cost = %f\n",cost_leaf);
 		if(cost_leaf < min_cost)
-		{	boxes=a;
+		{	box=bigbox;
+			ids=id;
 			flag=1;
 			return;
 		}
 		else
 		{	float mid_dim;
-			for(j=0;j<a.size();j++)
+			for(j=0;j<id.size();j++)
 			{	if(dim==0) mid_dim=midpts[j].x;
 				else if(dim==1) mid_dim=midpts[j].y;
 				else mid_dim=midpts[j].z;
 
 				if(mid_dim<split[dim][split_no])
-				{	l.push_back(a[j]);
-					sl.push_back(s[j]);
-				}
+					idl.push_back(id[j]);
 				else
-				{	r.push_back(a[j]);
-					sr.push_back(s[j]);
-				}
+					idr.push_back(id[j]);
 			}
-				
-			aabb b,n;
-			std::vector<aabb>b1,n1;
-			if(l.size())
-			{	for(i=0;i<l.size();i++)
-					b = b.group(b,l[i]);
-				b1.push_back(b);
-				left = new bvh_node(b1);	//left of node grouped
+			//printf("left size = %d right size = %d\n",idl.size(),idr.size());	
+			aabb l,r;
+			std::vector<int>x;
+			if(idl.size())
+			{	for(i=0;i<idl.size();i++)
+					l = l.group(l,a[idl[i]]);
+				left = new bvh_node(l,x);	//left of node grouped
 			}
-			if(r.size())
-			{	for(i=0;i<r.size();i++)
-					n = n.group(n,r[i]);
-				n1.push_back(n);
-				right = new bvh_node(n1);
+			if(idr.size())
+			{	for(i=0;i<idr.size();i++)
+					r = r.group(r,a[idr[i]]);
+				right = new bvh_node(r,x);	//right of node grouped
 			}
 			if(left != NULL) 
-				left->split(l,sl);
+				left->split(l,a,idl);
 			if(right != NULL) 
-				right->split(r,sr);
+				right->split(r,a,idr);
 		}	
 	}
 };
@@ -350,7 +341,7 @@ class bvh
 	void traverse(ray &r, std::vector<shape*>& a, std::stack<bvh_node*> &st)	//internal nodes - 1 element' boxes' array
 	{	bvh_node *x = st.top();
 		float min_t = std::numeric_limits<float>::max();
-		if((x->get_flag()==0)&&(!(x->boxes[0]).intersect(r, min_t))) return;
+		if((x->get_flag()==0)&&(!(x->box).intersect(r, min_t))) return;
 		
 		while(!st.empty())
 		{	bvh_node *x = st.top();
@@ -364,13 +355,13 @@ class bvh
 				bool left_intersect = false, right_intersect = false;
 				if(x->left != NULL)  
 				{	if (x->left->get_flag() == 0)
-						left_intersect = (x->left->boxes[0]).intersect(r, left_min);
-					else	//if left child is aleaf node
+						left_intersect = (x->left->box).intersect(r, left_min);
+					else	//if left child is a leaf node
 					{	int i;
-						for(i=0;i<(x->left->boxes).size();i++)
+						for(i=0;i<(x->left->ids).size();i++)
 						{	float hit_t = std::numeric_limits<float>::max();
 							int hit_id = -1;
-							if(a[(x->left->boxes[i]).get_id()]->intersect(r, hit_t, hit_id))
+							if(a[x->left->ids[i]]->intersect(r, hit_t, hit_id))
 							{	if(hit_t < r.get_tmax())
 								{
 									r.set_tmax(hit_t);
@@ -382,13 +373,13 @@ class bvh
 				}
 				if(x->right != NULL)  
 				{	if (x->right->get_flag() == 0)
-						right_intersect = (x->right->boxes[0]).intersect(r, right_min);
-					else	//if right child is aleaf node
+						right_intersect = (x->right->box).intersect(r, right_min);
+					else	//if right child is a leaf node
 					{	int i;
-						for(i=0;i<(x->right->boxes).size();i++)
+						for(i=0;i<(x->right->ids).size();i++)
 						{	float hit_t = std::numeric_limits<float>::max();
 							int hit_id = -1;
-							if(a[(x->right->boxes[i]).get_id()]->intersect(r, hit_t, hit_id))
+							if(a[x->right->ids[i]]->intersect(r, hit_t, hit_id))
 							{	if(hit_t < r.get_tmax())
 								{
 									r.set_tmax(hit_t);
@@ -412,12 +403,12 @@ class bvh
 		                else if(right_intersect) st.push(x->right); 
 			}
 			// LEAF NODE
-			else	//if node is aleaf node
+			else	//if node is a leaf node
 			{	int i;
-				for(i=0;i<(x->boxes).size();i++)
+				for(i=0;i<(x->ids).size();i++)
 				{	float hit_t = std::numeric_limits<float>::max();
 					int hit_id = -1;
-					if(a[(x->boxes[i]).get_id()]->intersect(r, hit_t, hit_id)) //directly doing ray-triangle intersections
+					if(a[x->ids[i]]->intersect(r, hit_t, hit_id)) //directly doing ray-triangle intersections
 					{	if(hit_t < r.get_tmax())			//instead of using ray-box then triangle
 						{
 							r.set_tmax(hit_t);

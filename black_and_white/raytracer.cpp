@@ -22,6 +22,7 @@ int main(int argc, char *argv[])
 	float xx,yy,zz,min = 10, max = -10;
 	vector < shape* > shapes;
 	vector < aabb > box_stack;
+	vector < int > ids,x;
 
 	struct timespec t1, t2, t3, t4;
 	double read_time,test_time,write_time;
@@ -30,12 +31,10 @@ int main(int argc, char *argv[])
 	//Read Input
 	aabb world_boundingbox;
 	Loader loader(argv[1]);
-	loader.Load_Model(shapes, world_boundingbox, box_stack);
-/**/	vector<aabb> wbb;
-/**/	wbb.push_back(world_boundingbox);
-	root= new bvh_node(wbb);
+	loader.Load_Model(shapes, world_boundingbox, box_stack, ids);
+	root= new bvh_node(world_boundingbox,x);
 	bvh master = bvh(root);	
-	master.root->split(box_stack, shapes);	//Building the aabb
+	master.root->split(world_boundingbox,box_stack, ids);	//Building the aabb
 	clock_gettime(CLOCK_MONOTONIC, &t2);	//calculating time for the above process
 
 	//Fixed Origin: Simulating a Pin-hole camera
