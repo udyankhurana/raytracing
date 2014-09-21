@@ -354,41 +354,9 @@ class bvh
 				float right_min = std::numeric_limits<float>::max();
 				bool left_intersect = false, right_intersect = false;
 				if(x->left != NULL)  
-				{	if (x->left->get_flag() == 0)
 						left_intersect = (x->left->box).intersect(r, left_min);
-					else	//if left child is a leaf node
-					{	int i;
-						for(i=0;i<(x->left->ids).size();i++)
-						{	float hit_t = std::numeric_limits<float>::max();
-							int hit_id = -1;
-							if(a[x->left->ids[i]]->intersect(r, hit_t, hit_id))
-							{	if(hit_t < r.get_tmax())
-								{
-									r.set_tmax(hit_t);
-									r.set_rayid(hit_id);
-								}
-							}
-						}
-					}
-				}
 				if(x->right != NULL)  
-				{	if (x->right->get_flag() == 0)
 						right_intersect = (x->right->box).intersect(r, right_min);
-					else	//if right child is a leaf node
-					{	int i;
-						for(i=0;i<(x->right->ids).size();i++)
-						{	float hit_t = std::numeric_limits<float>::max();
-							int hit_id = -1;
-							if(a[x->right->ids[i]]->intersect(r, hit_t, hit_id))
-							{	if(hit_t < r.get_tmax())
-								{
-									r.set_tmax(hit_t);
-									r.set_rayid(hit_id);
-								}
-							}
-						}
-					}
-				}
 				if(left_intersect && right_intersect) 
 	                    	{	if(left_min < right_min) 
 					{	st.push(x->right);
