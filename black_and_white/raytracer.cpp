@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 	float xx,yy,zz,min = 10, max = -10;
 	vector < shape* > shapes;
 	vector < aabb > box_stack;
-	vector < int > ids,x;
+	vector < int > ids,id,tri_ids;
 
 	struct timespec t1, t2, t3, t4;
 	double read_time,test_time,write_time;
@@ -32,9 +32,12 @@ int main(int argc, char *argv[])
 	aabb world_boundingbox;
 	Loader loader(argv[1]);
 	loader.Load_Model(shapes, world_boundingbox, box_stack, ids);
-	root= new bvh_node(world_boundingbox,x);
-	bvh master = bvh(root);	
-	master.root->split(world_boundingbox,box_stack, ids);	//Building the aabb
+	root= new bvh_node(world_boundingbox,id);
+	root->split(world_boundingbox, box_stack, ids);	//Building the aabb
+	printf("SPLIT DONE\n");
+	linearbvh L;	
+	L.flatten(root,tri_ids);
+	printf("FLATTENING DONE - lbvh of size %lu created\n", L.lbvh.size());
 	clock_gettime(CLOCK_MONOTONIC, &t2);	//calculating time for the above process
 
 	//Fixed Origin: Simulating a Pin-hole camera
@@ -62,9 +65,11 @@ int main(int argc, char *argv[])
 			dir = dir.normalize();
 			ray r = ray(orig,dir);
 			int col = bgcolor;
-			std::stack<bvh_node*> st;
-			st.push(root);
-			master.traverse(r, shapes, st);	//BVH traversal to find object intersecting with ray
+			std::stack<linearbvhnode> st;
+			std::stack<int> st2;
+			st.push(L.lbvh[0]);
+			st2.push(0);
+			L.traverse(r, shapes, st, st2, tri_ids);	//LinearBVH traversal to find object intersecting with ray
 			int rid = r.get_rayid();
 			if(rid != -1)
 				col=shapes[rid]->get_shapecolor();

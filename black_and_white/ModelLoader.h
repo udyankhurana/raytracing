@@ -265,7 +265,8 @@ class Loader
 			aabb box;
 			box.insert(x); box.insert(y); box.insert(z);
 			ids.push_back(i); 
-			box_stack.push_back(box);	//this will become node_stack
+			//box.set_id(i); 
+			box_stack.push_back(box);
 			world_boundingbox = world_boundingbox.group(world_boundingbox,box);
 		}
 	}

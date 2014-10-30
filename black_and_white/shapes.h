@@ -208,7 +208,7 @@ class bvh_node
 	{	flag = m;		}
 
 	void split(aabb &bigbox, std::vector<aabb>& a,std::vector<int>& id)
-	{	if(a.size()<=4) //if size<=4 directly make it a leaf node
+	{	if(id.size()<=4) //if size<=4 directly make it a leaf node
 		{	box=bigbox;
 			ids=id;
 			flag=1;
@@ -333,50 +333,106 @@ class bvh_node
 	}
 };
 
-class bvh
-{	public:
-	bvh_node *root;
-	bvh(bvh_node *a): root(a) {}
+union offs 
+{	int leaf_off;
+	int rchild_off;
+	offs() { memset( this, -1, sizeof( offs ) ); }
+};
 
-	void traverse(ray &r, std::vector<shape*>& a, std::stack<bvh_node*> &st)	//internal nodes - 1 element' boxes' array
-	{	bvh_node *x = st.top();
+struct linearbvhnode
+{	aabb box;
+	int size;
+	offs offsets;
+	linearbvhnode(aabb bbox,int s, offs o): box(bbox), size(s), offsets(o) {}
+	linearbvhnode(): box(aabb()), size(-1), offsets(offs()) {}
+};
+
+class linearbvh
+{
+	public:
+	std::vector< linearbvhnode > lbvh;
+	void flatten(bvh_node *root, std::vector<int> &tri_ids)
+	{	if(root==NULL) 
+			return;
+		int leaf = root->get_flag();
+		if(leaf)
+		{	offs o;
+			o.leaf_off = tri_ids.size();
+			linearbvhnode node(root->box, root->ids.size(), o);
+			lbvh.push_back(node);
+			for(int i=0;i<root->ids.size();i++)
+				tri_ids.push_back(root->ids[i]);
+			return;
+		}
+		else
+		{	offs o;	
+			linearbvhnode node(root->box, 0, o);
+			int k=lbvh.size();
+			lbvh.push_back(node);
+			flatten(root->left,tri_ids);
+			lbvh[k].offsets.rchild_off = lbvh.size();	//set roff of parent
+			flatten(root->right,tri_ids);
+		}
+	}
+
+	void traverse(ray &r, std::vector<shape*>& a, std::stack<linearbvhnode> &st, std::stack<int> &st2, std::vector<int> &tri_ids)
+	{	linearbvhnode x = st.top();
 		float min_t = std::numeric_limits<float>::max();
-		if((x->get_flag()==0)&&(!(x->box).intersect(r, min_t))) return;
+		if((x.size==0)&&(!(x.box).intersect(r, min_t))) return;
 		
 		while(!st.empty())
-		{	bvh_node *x = st.top();
-			int leaf_node = x->get_flag();
-			st.pop();
+		{	linearbvhnode x = st.top();
+			int pos = st2.top();
+			int leaf_node = x.size;
+			st.pop(); st2.pop();
 			// INTERNAL NODE
 			if(!leaf_node)
 			{	//intersected_nonleaf++;
 				float left_min = std::numeric_limits<float>::max();
 				float right_min = std::numeric_limits<float>::max();
 				bool left_intersect = false, right_intersect = false;
-				if(x->left != NULL)  
-						left_intersect = (x->left->box).intersect(r, left_min);
-				if(x->right != NULL)  
-						right_intersect = (x->right->box).intersect(r, right_min);
+				int left_pos = pos+1, right_pos = x.offsets.rchild_off;
+		//		printf("left_pos = %d, right_pos = %d\n",left_pos,right_pos);
+				linearbvhnode left,right;
+				if(left_pos < lbvh.size()) 
+				{	left = lbvh[left_pos];
+					left_intersect = (left.box).intersect(r, left_min);
+				}
+				if(right_pos < lbvh.size()) 
+				{	right = lbvh[right_pos];
+					right_intersect = (right.box).intersect(r, right_min);
+				}
+
 				if(left_intersect && right_intersect) 
 	                    	{	if(left_min < right_min) 
-					{	st.push(x->right);
-				                st.push(x->left);
+					{	st.push(right);
+						st2.push(right_pos);
+				                st.push(left);
+						st2.push(left_pos);
 			               	}
 		                	else 
-					{	st.push(x->left);
-					        st.push(x->right);
+					{	st.push(left);
+						st2.push(left_pos);
+					        st.push(right);
+						st2.push(right_pos);
 			             	}
 		                }
-		                else if(left_intersect)  st.push(x->left);	
-		                else if(right_intersect) st.push(x->right); 
+		                else if(left_intersect)
+				{	st.push(left);
+					st2.push(left_pos);
+				}
+		                else if(right_intersect) 
+				{	st.push(right); 
+					st2.push(right_pos);
+				}
 			}
 			// LEAF NODE
 			else	//if node is a leaf node
-			{	int i;
-				for(i=0;i<(x->ids).size();i++)
+			{	int i,leaf_offset = x.offsets.leaf_off;
+				for(i=leaf_offset; i<leaf_offset+x.size; i++)
 				{	float hit_t = std::numeric_limits<float>::max();
 					int hit_id = -1;
-					if(a[x->ids[i]]->intersect(r, hit_t, hit_id)) //directly doing ray-triangle intersections
+					if(a[tri_ids[i]]->intersect(r, hit_t, hit_id)) //directly doing ray-triangle intersections
 					{	if(hit_t < r.get_tmax())			//instead of using ray-box then triangle
 						{
 							r.set_tmax(hit_t);
